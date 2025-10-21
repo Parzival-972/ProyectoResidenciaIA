@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import DetailsTab from "@/components/DetailsTab";
 import AntecedentesTab from "@/components/AntecedentesTab";
-import ArchivosTab from "@/components/ArchivosTab";
 import EvaluacionTab from "@/components/EvaluacionTab";
 import Loading from "../../../../components/Loading";
 import MedicoTab from "@/components/MedicoTab";
 import TabButton from "@/components/TabButton";
 import TabContent from "@/components/TabContent";
+import EstudiosTab from "@/components/EstudiosTab";
 
 
 const ViewPatientPage = ({ params }) => {
@@ -21,8 +21,8 @@ const ViewPatientPage = ({ params }) => {
   const tabs = [
     { id: "details", label: "Detalles de paciente" },
     { id: "antecedentes", label: "Antecedentes" },
-    { id: "archivos", label: "Archivos" },
-    { id: "medico", label: "Estudio Medico" },
+    { id: "estudios", label: "Estudios" },
+    { id: "medico", label: "Diagnóstico de Demencia" },
     { id: "evaluacion", label: "Evaluación Estudio Médico" },
   ];
 
@@ -149,8 +149,8 @@ const ViewPatientPage = ({ params }) => {
           )}
          {activeTab === "details" && <DetailsTab patient={patient} imc={imc} />}
          {activeTab === "antecedentes" && <AntecedentesTab patient={patient} />}
-         {activeTab === "archivos" && <ArchivosTab userId={id} />}
-         {activeTab === "medico" && <MedicoTab userId={id} />}
+         {activeTab === "estudios" && <EstudiosTab userId={id} />}
+         {activeTab === "demencia-medico" && <MedicoTab userId={id} />}
          {activeTab === "evaluacion" && <EvaluacionTab userId={id} />}
          </TabContent>
       </AnimatePresence>
