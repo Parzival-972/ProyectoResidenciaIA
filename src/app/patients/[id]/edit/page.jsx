@@ -4,10 +4,63 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 
+import FormInput from "@/components/Form/FormInput";
+import FormSelect from "@/components/Form/FormSelect";
+import FormSection from "@/components/Form/FormSection";
+
+const yesNoSelectFields = [
+  "tabaco", "alcohol", "drogas", "actividad", "enfermedadCronica", 
+  "alergias", "cirugias", "trastornos", "cancer", "hipertension", 
+  "diabetes", "cancerF", "asma", "enfermedadN"
+];
+const YES_NO_OPTIONS = ["Si", "No"];
+const GENDER_OPTIONS = ["Masculino", "Femenino", "Otro"];
+
+const formSections = [
+    { title: "Datos Personales", keys: ["name", "apellidoPaterno", "apellidoMaterno", "fechaDeNacimiento", "lugarDeNacimiento", "genero"] },
+    { title: "Contacto", keys: ["phone", "email"] },
+    { title: "Dirección", keys: ["calle", "colonia", "codigoPostal", "ciudad", "estado"] },
+    { title: "Información Familiar", keys: ["nombreFamiliar", "phoneFamiliar", "emailFamiliar"] },
+    { title: "Hábitos", keys: ["tabaco", "alcohol", "drogas", "actividad"] },
+    { title: "Salud", keys: ["enfermedadCronica", "alergias", "cirugias", "trastornos", "cancer", "hipertension", "diabetes", "asma", "cancerF", "enfermedadN"] },
+    { title: "Otros Datos", keys: ["curp", "estadoCivil", "educacion", "ocupacion"] },
+];
+
+const FormField = ({ field, onChange }) => {
+  const commonProps = {
+    label: field.label,
+    name: field.name,
+    value: field.value,
+    onChange: onChange,
+  };
+
+  if (yesNoSelectFields.includes(field.name)) {
+    const options = YES_NO_OPTIONS.map(option => ({
+      value: option,
+      label: option,
+    }));
+    return <FormSelect {...commonProps} options={options} />;
+  }
+
+  if (field.name === "genero") {
+    const options = GENDER_OPTIONS.map(option => ({
+      value: option,
+      label: option,
+    }));
+    return <FormSelect {...commonProps} options={options} />;
+  }
+
+  if (field.name === "fechaDeNacimiento") {
+    return <FormInput {...commonProps} type="date" />;
+  }
+
+  return <FormInput {...commonProps} type="text" />;
+};
+
 export default function EditPatientPage({ params }) {
   const { id } = params;
   const router = useRouter();
-
+  
   const [fields, setFields] = useState([
     { label: "Nombre", name: "name", value: "" },
     { label: "Apellido Paterno", name: "apellidoPaterno", value: "" },
@@ -54,13 +107,15 @@ export default function EditPatientPage({ params }) {
           prevFields.map((field) => ({
             ...field,
             value: data[field.name] || "",
+            ...(field.name === "fechaDeNacimiento" && data[field.name]
+              ? { value: new Date(data[field.name]).toISOString().split("T")[0] }
+              : {}),
           }))
         );
       } catch (error) {
         console.error("Error al conseguir información del paciente:", error);
       }
     };
-
     fetchPatient();
   }, [id]);
 
@@ -72,7 +127,8 @@ export default function EditPatientPage({ params }) {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault();
     const updatedData = fields.reduce((acc, field) => {
       acc[field.name] = field.value;
       return acc;
@@ -84,9 +140,7 @@ export default function EditPatientPage({ params }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedData),
       });
-
-      if (!response.ok) throw new Error();
-
+      if (!response.ok) throw new Error("Error al actualizar");
       alert("¡Se ha actualizado la información del paciente!");
       router.push(`/patients/${id}/view`);
     } catch (error) {
@@ -97,41 +151,27 @@ export default function EditPatientPage({ params }) {
   return (
     <div className="container mx-auto px-4 py-6">
       <h1 className="text-3xl font-bold mb-6">Editar Información del Paciente</h1>
-      <form className="space-y-8">
-        {[
-          { title: "Datos Personales", keys: ["name", "apellidoPaterno", "apellidoMaterno", "fechaDeNacimiento", "lugarDeNacimiento", "genero"] },
-          { title: "Contacto", keys: ["phone", "email"] },
-          { title: "Dirección", keys: ["calle", "colonia", "codigoPostal", "ciudad", "estado"] },
-          { title: "Información Familiar", keys: ["nombreFamiliar", "phoneFamiliar", "emailFamiliar"] },
-          { title: "Hábitos", keys: ["tabaco", "alcohol", "drogas", "actividad"] },
-          { title: "Salud", keys: ["enfermedadCronica", "alergias", "cirugias", "trastornos", "cancer", "hipertension", "diabetes", "asma", "cancerF", "enfermedadN"] },
-          { title: "Otros Datos", keys: ["curp", "estadoCivil", "educacion", "ocupacion"] },
-        ].map((section, sIndex) => (
-          <section key={sIndex} className="bg-white p-6 rounded-2xl shadow">
-            <h2 className="text-xl font-semibold mb-4">{section.title}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {fields
-                .filter((f) => section.keys.includes(f.name))
-                .map((field, index) => (
-                  <div key={field.name}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {field.label}
-                    </label>
-                    <input
-                      type={field.name === "fechaDeNacimiento" ? "date" : "text"}
-                      value={field.value}
-                      onChange={(e) => handleChange(fields.findIndex(f => f.name === field.name), e.target.value)}
-                      className="w-full border border-gray-300 rounded-md p-2"
-                    />
-                  </div>
-                ))}
-            </div>
-          </section>
+      <form className="space-y-8" onSubmit={handleSave}>
+        {formSections.map((section) => (
+          <FormSection key={section.title} title={section.title}>
+            {fields
+              .filter((f) => section.keys.includes(f.name))
+              .map((field) => {
+                const fieldIndex = fields.findIndex((f) => f.name === field.name);
+                return (
+                  <FormField
+                    key={field.name}
+                    field={field}
+                    onChange={(e) => handleChange(fieldIndex, e.target.value)}
+                  />
+                );
+              })}
+          </FormSection>
         ))}
+        
         <div className="flex justify-between mt-6">
           <button
-            type="button"
-            onClick={handleSave}
+            type="submit"
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium flex items-center"
           >
             <Save size={18} className="mr-2" /> Guardar Cambios

@@ -3,6 +3,7 @@ import { compare } from "bcryptjs";
 import jwt from "jsonwebtoken";
 import connection from "../../../../../libs/connection";
 import MedicalStaff from "../../../../models/medicalStaff";
+import { cookies } from "next/headers";
 
 export async function POST(request) {
   try {
@@ -45,11 +46,20 @@ export async function POST(request) {
       { expiresIn: "1h" }
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: "Login exitoso",
-      token,
-      role: user.role,
+      role: user.role, 
     });
+
+    cookies().set("token", token, {
+      httpOnly: true, // No accesible por JavaScript
+      secure: process.env.NODE_ENV === "production", // Solo HTTPS en producción
+      sameSite: "strict", // Protección CSRF
+      maxAge: 60 * 60, // 1 hora de duración
+      path: "/", // Accesible en toda la app
+    });
+
+    return response;
   } catch (error) {
     console.error("Login Error:", error);
     return NextResponse.json(
