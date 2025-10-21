@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import DetailsTab from "@/components/DetailsTab";
 import AntecedentesTab from "@/components/AntecedentesTab";
 import ArchivosTab from "@/components/ArchivosTab";
+import EvaluacionTab from "@/components/EvaluacionTab";
 import Loading from "../../../../components/Loading";
 import MedicoTab from "@/components/MedicoTab";
 import TabButton from "@/components/TabButton";
 import TabContent from "@/components/TabContent";
+
 
 const ViewPatientPage = ({ params }) => {
   const { id } = params;
@@ -21,6 +23,7 @@ const ViewPatientPage = ({ params }) => {
     { id: "antecedentes", label: "Antecedentes" },
     { id: "archivos", label: "Archivos" },
     { id: "medico", label: "Estudio Medico" },
+    { id: "evaluacion", label: "Evaluación Estudio Médico" },
   ];
 
   const calculateIMC = (peso, estatura) => {
@@ -144,9 +147,12 @@ const ViewPatientPage = ({ params }) => {
           {activeTab === "antecedentes" && (
             <AntecedentesTab patient={patient} />
           )}
-          {activeTab === "archivos" && <ArchivosTab userId={id} />}
-          {activeTab === "medico" && <MedicoTab userId={id} />}
-        </TabContent>
+         {activeTab === "details" && <DetailsTab patient={patient} imc={imc} />}
+         {activeTab === "antecedentes" && <AntecedentesTab patient={patient} />}
+         {activeTab === "archivos" && <ArchivosTab userId={id} />}
+         {activeTab === "medico" && <MedicoTab userId={id} />}
+         {activeTab === "evaluacion" && <EvaluacionTab userId={id} />}
+         </TabContent>
       </AnimatePresence>
     </motion.div>
   );
