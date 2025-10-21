@@ -4,9 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 
-import FormInput from "@/components/Form/FormInput";
-import FormSelect from "@/components/Form/FormSelect";
-import FormSection from "@/components/Form/FormSection";
+import { FormSection, FormInput, FormSelect } from '@/components/Form/FormsEditPatient';
 
 const yesNoSelectFields = [
   "tabaco", "alcohol", "drogas", "actividad", "enfermedadCronica", 
@@ -14,7 +12,10 @@ const yesNoSelectFields = [
   "diabetes", "cancerF", "asma", "enfermedadN"
 ];
 const YES_NO_OPTIONS = ["Si", "No"];
-const GENDER_OPTIONS = ["Masculino", "Femenino", "Otro"];
+const GENDER_OPTIONS = ["Masculino", "Femenino"];
+const ESTADO_CIVIL_OPTIONS = ["Soltero(a)", "Casado(a)", "Unión Libre", "Separado(a)", "Divorciado(a)", "Viudo(a)"];
+const EDUCACION_OPTIONS = ["Ninguna", "Preescolar", "Primaria", "Secundaria", "Media Superior", "Carrera técnica", "Licenciatura", "Maestría", "Doctorado"];
+const OCUPACION_OPTIONS = ["Estudiante", "Empleado(a) (Sector Público)", "Empleado(a) (Sector Privado)", "Trabajador(a) Independiente", "Labores de hogar", "Jubilado(a)", "Desempleado(a)", "Otro"];
 
 const formSections = [
     { title: "Datos Personales", keys: ["name", "apellidoPaterno", "apellidoMaterno", "fechaDeNacimiento", "lugarDeNacimiento", "genero"] },
@@ -54,6 +55,28 @@ const FormField = ({ field, onChange }) => {
     return <FormInput {...commonProps} type="date" />;
   }
 
+  if (field.name === "estadoCivil") {
+    const options = ESTADO_CIVIL_OPTIONS.map(option => ({
+      value: option,
+      label: option,
+    }));
+    return <FormSelect {...commonProps} options={options} />;
+  }
+  if (field.name === "educacion") {
+    const options = EDUCACION_OPTIONS.map(option => ({
+      value: option,
+      label: option,
+    }));
+    return <FormSelect {...commonProps} options={options} />;
+  }
+  if (field.name === "ocupacion") {
+    const options = OCUPACION_OPTIONS.map(option => ({
+      value: option,
+      label: option,
+    }));
+    return <FormSelect {...commonProps} options={options} />;
+  }
+
   return <FormInput {...commonProps} type="text" />;
 };
 
@@ -67,35 +90,35 @@ export default function EditPatientPage({ params }) {
     { label: "Apellido Materno", name: "apellidoMaterno", value: "" },
     { label: "Fecha de Nacimiento", name: "fechaDeNacimiento", value: "" },
     { label: "Lugar de Nacimiento", name: "lugarDeNacimiento", value: "" },
-    { label: "Genero", name: "genero", value: "" },
-    { label: "Phone", name: "phone", value: "" },
-    { label: "Email", name: "email", value: "" },
+    { label: "Sexo", name: "genero", value: "" },
+    { label: "Teléfono", name: "telefono", value: "" },
+    { label: "Correo electrónico", name: "email", value: "" },
     { label: "CURP", name: "curp", value: "" },
     { label: "Estado Civil", name: "estadoCivil", value: "" },
-    { label: "Educacion", name: "educacion", value: "" },
-    { label: "Ocupacion", name: "ocupacion", value: "" },
+    { label: "Educación", name: "educacion", value: "" },
+    { label: "Ocupación", name: "ocupacion", value: "" },
     { label: "Ciudad", name: "ciudad", value: "" },
     { label: "Estado", name: "estado", value: "" },
     { label: "Calle", name: "calle", value: "" },
     { label: "Colonia", name: "colonia", value: "" },
-    { label: "Codigo Postal", name: "codigoPostal", value: "" },
+    { label: "Código Postal", name: "codigoPostal", value: "" },
     { label: "Nombre Familiar", name: "nombreFamiliar", value: "" },
-    { label: "Phone Familiar", name: "phoneFamiliar", value: "" },
-    { label: "Email Familiar", name: "emailFamiliar", value: "" },
+    { label: "Teléfono Familiar", name: "telefonoFamiliar", value: "" },
+    { label: "Correo Electrónico Familiar", name: "emailFamiliar", value: "" },
     { label: "Tabaco", name: "tabaco", value: "" },
     { label: "Alcohol", name: "alcohol", value: "" },
     { label: "Drogas", name: "drogas", value: "" },
-    { label: "Actividad", name: "actividad", value: "" },
-    { label: "Enfermedad Cronica", name: "enfermedadCronica", value: "" },
+    { label: "Actividad Física", name: "actividad", value: "" },
+    { label: "Enfermedad Crónica", name: "enfermedadCronica", value: "" },
     { label: "Alergias", name: "alergias", value: "" },
-    { label: "Cirugias", name: "cirugias", value: "" },
+    { label: "Cirugías", name: "cirugias", value: "" },
     { label: "Trastornos", name: "trastornos", value: "" },
-    { label: "Cancer", name: "cancer", value: "" },
-    { label: "Hipertension", name: "hipertension", value: "" },
+    { label: "Cáncer", name: "cancer", value: "" },
+    { label: "Hipertensión", name: "hipertension", value: "" },
     { label: "Diabetes", name: "diabetes", value: "" },
-    { label: "Cancer Familiar", name: "cancerF", value: "" },
+    { label: "Cáncer Familiar", name: "cancerF", value: "" },
     { label: "Asma", name: "asma", value: "" },
-    { label: "Enfermedad Neurologica", name: "enfermedadN", value: "" },
+    { label: "Enfermedad Neurológica", name: "enfermedadN", value: "" },
   ]);
 
   useEffect(() => {

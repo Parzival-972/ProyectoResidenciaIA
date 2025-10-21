@@ -93,13 +93,13 @@ const PatientTable = () => {
                   Apellido
                 </th>
                 <th className="bg-gray-100 sticky top-0 border-b border-gray-200 px-6 py-2 text-gray-600 font-bold tracking-wider uppercase text-xs">
-                  Correo
+                  Correo Electrónico
                 </th>
                 <th className="bg-gray-100 sticky top-0 border-b border-gray-200 px-6 py-2 text-gray-600 font-bold tracking-wider uppercase text-xs">
-                  Genero
+                  Sexo
                 </th>
                 <th className="bg-gray-100 sticky top-0 border-b border-gray-200 px-6 py-2 text-gray-600 font-bold tracking-wider uppercase text-xs">
-                  Numero de telefono
+                  Número de teléfono
                 </th>
                 <th className="bg-gray-100 sticky top-0 border-b border-gray-200 px-6 py-2 text-gray-600 font-bold tracking-wider uppercase text-xs"></th>
               </tr>

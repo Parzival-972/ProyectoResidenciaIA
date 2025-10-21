@@ -191,7 +191,7 @@ const UserForm = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-600">
-                Email
+                Correo Electrónico
               </label>
               <input
                 type="email"
@@ -203,10 +203,10 @@ const UserForm = () => {
                 required
               />
             </div>
-            {/* Género */}
+            {/* Sexo Nacimiento */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-600">
-                Género
+                Sexo
               </label>
               <select
                 type="text"
@@ -450,7 +450,7 @@ const UserForm = () => {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-600">
-                Email Familiar
+                Correo Electrónico Familiar
               </label>
               <input
                 type="email"
