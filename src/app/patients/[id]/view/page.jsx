@@ -21,8 +21,8 @@ const ViewPatientPage = ({ params }) => {
   const tabs = [
     { id: "details", label: "Detalles de paciente" },
     { id: "antecedentes", label: "Antecedentes" },
-    { id: "estudios", label: "Estudios" },
-    { id: "medico", label: "Diagnóstico de Demencia" },
+    { id: "estudios", label: "Subir Estudios" },
+    { id: "demencia-medico", label: "Diagnóstico de Demencia" },
     { id: "evaluacion", label: "Evaluación Estudio Médico" },
   ];
 

@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, Eye, Trash2, Loader2 } from "lucide-react";
-// Asumimos que esta es tu función para subir archivos a S3, como en Archivos.jsx
 import { uploadImage } from "../../libs/s3";
 
-// Helper para formatear el tamaño del archivo
+// Formating the file
 const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -16,15 +15,15 @@ const formatBytes = (bytes, decimals = 2) => {
 
 const EstudiosTab = ({ userId }) => {
   const [paciente, setPaciente] = useState(null);
-  const [uploads, setUploads] = useState([]); // Cola de archivos a subir y ya subidos
+  const [uploads, setUploads] = useState([]); 
   const [tipoDeEstudio, setTipoDeEstudio] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Simulación del nombre del profesional que ha iniciado sesión
-  const nombreProfesional = "Oscar Sención";
+  const nombreProfesional = "Oscar Sencion";
 
-  // --- 1. OBTENER ESTUDIOS EXISTENTES ---
+  // OBTENER ESTUDIOS EXISTENTES
   useEffect(() => {
     const fetchInitialData = async () => {
       if (!userId) {
@@ -186,10 +185,11 @@ const EstudiosTab = ({ userId }) => {
                 disabled={isUploading}
               >
                  <option value="" disabled>Seleccione...</option>
-                 <option value="Tomografía (TC)">Tomografía (TC)</option>
-                 <option value="Resonancia (RM)">Resonancia (RM)</option>
+                 <option value="Tomografía de Cráneo">Tomografía de Cráneo</option>
+                 <option value="Resonancia Magnética">Resonancia Magnética</option>
                  <option value="Rayos X">Rayos X</option>
-                 <option value="Laboratorio">Laboratorio</option>
+                 <option value="Estudio de Dibujo">Estudio de Dibujo</option>
+                 <option value="Estudio de Audio">Estudio de Audio</option>
                  <option value="Otro">Otro</option>
               </select>
           </div>
