@@ -1,29 +1,38 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Brain, Loader2, Search } from "lucide-react";
+import { Brain, Loader2, Search, Activity } from "lucide-react";
 
 const EvaluacionTab = ({ userId }) => {
   const [enfermedad, setEnfermedad] = useState("");
-  const [modelo, setModelo] = useState("");
+  const [modelo, setModelo] = useState(""); // Aquí guardaremos el ID técnico del modelo
   const [estudiosCargados, setEstudiosCargados] = useState([]);
-  const [estudioSeleccionado, setEstudioSeleccionado] = useState("");
+  const [estudioSeleccionado, setEstudioSeleccionado] = useState(""); // ID del estudio
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Estado de carga para la evaluación
+  const [loadingEstudios, setLoadingEstudios] = useState(true); // Estado de carga para los estudios
   const [error, setError] = useState(null);
 
-  // Objeto para definir los modelos disponibles por enfermedad
+  // --- CONFIGURACIÓN DE MODELOS ---
+  // El 'id' debe coincidir con lo que espera tu API de Python (NeuroAPI)
   const modelosDisponibles = {
-    Alzheimer: ["Modelo de Resonancia Magnética", "Modelo de Tomografía"],
-    Parkinson: ["Modelo de Análisis de Voz", "Modelo de Dibujo Espiral"],
+    Alzheimer: [
+      { nombre: "Tomografía Blanco y Negro", id: "alzheimer_grayscale", tipoArchivo: ".jpg" },
+      { nombre: "Tomografía a Color", id: "alzheimer_color", tipoArchivo: ".jpg" },
+    ],
+    Parkinson: [
+      { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral", tipoArchivo: ".jpg" },
+      { nombre: "Modelo D (Audio-Voz)", id: "nombredelmodelo", tipoArchivo: ".mp3" },
+    ],
   };
 
-  // Obtener los estudios existentes para este paciente
+  // --- 1. CARGAR ESTUDIOS ---
   useEffect(() => {
     const fetchEstudios = async () => {
       if (!userId) return;
       try {
-        setLoading(true);
+        setLoadingEstudios(true);
         setError(null);
+        // Usamos el endpoint unificado de estudios que creamos anteriormente
         const response = await fetch(`/api/patients/${userId}/estudios`);
         if (!response.ok) {
           throw new Error("Error al obtener los estudios médicos");
@@ -34,29 +43,68 @@ const EvaluacionTab = ({ userId }) => {
         setError(err.message);
         console.error(err);
       } finally {
-        setLoading(false);
+        setLoadingEstudios(false);
       }
     };
 
     fetchEstudios();
   }, [userId]);
 
-  const handleSubmit = (e) => {
+  // --- 2. ENVIAR A EVALUAR ---
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!enfermedad || !modelo || !estudioSeleccionado) {
       alert("Por favor, completa todos los pasos.");
       return;
     }
-    alert(
-      `Evaluando estudio ID: ${estudioSeleccionado} para ${enfermedad} con el modelo: ${modelo}`
-    );
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Buscar el objeto del estudio completo para obtener la URL
+      const estudioObj = estudiosCargados.find(e => e._id === estudioSeleccionado);
+      if (!estudioObj) throw new Error("Estudio no encontrado en la lista");
+
+      // 2. Llamar a nuestro "puente" de API
+      const response = await fetch("/api/diagnostico", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileUrl: estudioObj.fileUrl, // URL de S3
+          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
+          pacienteId: userId
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Error al realizar el diagnóstico");
+      }
+
+      const resultado = await response.json();
+
+      // 3. Mostrar resultado
+      alert(
+        `Diagnóstico Completado:\n\n` +
+        `Resultado: ${resultado.diagnostico}\n` +
+        `Certeza: ${resultado.nivel_de_certeza}%`
+      );
+
+    } catch (err) {
+      console.error(err);
+      alert(`Error: ${err.message}`);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filtrar estudios basados en el término de búsqueda
   const estudiosFiltrados = estudiosCargados.filter(
     (estudio) =>
       estudio.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      estudio.tipoDeEstudio.toLowerCase().includes(searchTerm.toLowerCase())
+      (estudio.tipoDeEstudio && estudio.tipoDeEstudio.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -78,8 +126,8 @@ const EvaluacionTab = ({ userId }) => {
             value={enfermedad}
             onChange={(e) => {
               setEnfermedad(e.target.value);
-              setModelo(""); // Resetear modelo
-              setEstudioSeleccionado(""); // Resetear estudio
+              setModelo(""); 
+              setEstudioSeleccionado("");
             }}
             className="border rounded-md w-full p-2 focus:ring-2 focus:ring-blue-500"
           >
@@ -99,14 +147,14 @@ const EvaluacionTab = ({ userId }) => {
               value={modelo}
               onChange={(e) => {
                 setModelo(e.target.value);
-                setEstudioSeleccionado(""); // Resetear estudio
+                setEstudioSeleccionado(""); 
               }}
               className="border rounded-md w-full p-2 focus:ring-2 focus:ring-blue-500"
             >
               <option value="">-- Selecciona un modelo --</option>
               {modelosDisponibles[enfermedad]?.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+                <option key={m.id} value={m.id}>
+                  {m.nombre}
                 </option>
               ))}
             </select>
@@ -119,7 +167,7 @@ const EvaluacionTab = ({ userId }) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               3. Seleccionar Estudio Cargado
             </label>
-            {loading ? (
+            {loadingEstudios ? (
               <div className="flex items-center justify-center p-4">
                 <Loader2 className="animate-spin h-5 w-5 text-blue-600" />
                 <span className="ml-2">Cargando estudios...</span>
@@ -128,6 +176,7 @@ const EvaluacionTab = ({ userId }) => {
               <p className="text-red-500 text-sm">{error}</p>
             ) : (
               <>
+                {/* Barra de búsqueda */}
                 <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
@@ -138,6 +187,8 @@ const EvaluacionTab = ({ userId }) => {
                     className="border rounded-md w-full p-2 pl-10 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+                
+                {/* Dropdown de estudios */}
                 <select
                   value={estudioSeleccionado}
                   onChange={(e) => setEstudioSeleccionado(e.target.value)}
@@ -145,11 +196,15 @@ const EvaluacionTab = ({ userId }) => {
                   disabled={estudiosFiltrados.length === 0}
                 >
                   <option value="">-- Selecciona un estudio --</option>
-                  {estudiosFiltrados.map((estudio) => (
-                    <option key={estudio._id} value={estudio._id}>
-                      {estudio.fileName} ({estudio.tipoDeEstudio})
-                    </option>
-                  ))}
+                  {estudiosFiltrados.length > 0 ? (
+                    estudiosFiltrados.map((estudio) => (
+                      <option key={estudio._id} value={estudio._id}>
+                        {estudio.fileName} ({estudio.tipoDeEstudio || "Sin tipo"})
+                      </option>
+                    ))
+                  ) : (
+                    <option value="" disabled>No se encontraron estudios</option>
+                  )}
                 </select>
               </>
             )}
@@ -158,10 +213,20 @@ const EvaluacionTab = ({ userId }) => {
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white px-5 py-3 rounded-md hover:bg-blue-700 transition font-semibold"
-          disabled={!modelo || !estudioSeleccionado || loading}
+          className="w-full bg-blue-600 text-white px-5 py-3 rounded-md hover:bg-blue-700 transition font-semibold flex justify-center items-center disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={!enfermedad || !modelo || !estudioSeleccionado || loading}
         >
-          Evaluar Estudio
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin h-5 w-5 mr-2" />
+              Procesando Diagnóstico...
+            </>
+          ) : (
+            <>
+              <Activity className="h-5 w-5 mr-2" />
+              Evaluar Estudio
+            </>
+          )}
         </button>
       </form>
     </div>
