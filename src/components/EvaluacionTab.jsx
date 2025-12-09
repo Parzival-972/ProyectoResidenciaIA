@@ -5,24 +5,22 @@ import Swal from 'sweetalert2';
 
 const EvaluacionTab = ({ userId }) => {
   const [enfermedad, setEnfermedad] = useState("");
-  const [modelo, setModelo] = useState(""); // Aquí guardaremos el ID técnico del modelo
+  const [modelo, setModelo] = useState("");
   const [estudiosCargados, setEstudiosCargados] = useState([]);
-  const [estudioSeleccionado, setEstudioSeleccionado] = useState(""); // ID del estudio
+  const [estudioSeleccionado, setEstudioSeleccionado] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(false); // Estado de carga para la evaluación
-  const [loadingEstudios, setLoadingEstudios] = useState(true); // Estado de carga para los estudios
+  const [loading, setLoading] = useState(false);
+  const [loadingEstudios, setLoadingEstudios] = useState(true);
   const [error, setError] = useState(null);
 
   // --- CONFIGURACIÓN DE MODELOS ---
-  // El 'id' debe coincidir con lo que espera tu API de Python (NeuroAPI)
   const modelosDisponibles = {
     Alzheimer: [
       { nombre: "Tomografía Blanco y Negro", id: "alzheimer_grayscale", tipoArchivo: ".jpg" },
       { nombre: "Tomografía a Color", id: "alzheimer_color", tipoArchivo: ".jpg" },
     ],
     Parkinson: [
-      { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral", tipoArchivo: ".jpg" },
-      { nombre: "Modelo D (Audio-Voz)", id: "nombredelmodelo", tipoArchivo: ".mp3" },
+      { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral_wave", tipoArchivo: ".jpg" },
     ],
   };
 
@@ -33,7 +31,6 @@ const EvaluacionTab = ({ userId }) => {
       try {
         setLoadingEstudios(true);
         setError(null);
-        // Usamos el endpoint unificado de estudios que creamos anteriormente
         const response = await fetch(`/api/patients/${userId}/estudios`);
         if (!response.ok) {
           throw new Error("Error al obtener los estudios médicos");
@@ -80,7 +77,6 @@ const EvaluacionTab = ({ userId }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // 💡 MODIFICACIÓN 1: Reemplazar alert() por Swal.fire (Advertencia de datos faltantes)
     if (!enfermedad || !modelo || !estudioSeleccionado) {
       Swal.fire({
         title: '¡Atención!',
@@ -107,8 +103,8 @@ const EvaluacionTab = ({ userId }) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fileUrl: estudioObj.fileUrl, // URL de S3
-          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
+          fileUrl: estudioObj.fileUrl, 
+          modeloId: modelo,          
           pacienteId: userId
         }),
       });
@@ -119,14 +115,11 @@ const EvaluacionTab = ({ userId }) => {
       }
 
       const resultado = await response.json();
-
-      // 3. Mostrar resultado usando la función Swal
       mostrarResultadoDiagnostico(resultado);
 
     } catch (err) {
       console.error(err);
       
-      // 💡 MODIFICACIÓN 2: Reemplazar alert() por Swal.fire (Error de Diagnóstico)
       Swal.fire({
         title: 'Error en la Evaluación',
         text: `Ocurrió un error: ${err.message}`,
