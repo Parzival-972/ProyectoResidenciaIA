@@ -22,7 +22,6 @@ const EvaluacionTab = ({ userId }) => {
     ],
     Parkinson: [
       { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral_wave", tipoArchivo: ".jpg" },
-      { nombre: "Modelo D (Audio-Voz)", id: "nombredelmodelo", tipoArchivo: ".mp3" },
     ],
   };
 
@@ -108,7 +107,7 @@ const EvaluacionTab = ({ userId }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileUrl: estudioObj.fileUrl, // URL de S3
-          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
+          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
           pacienteId: userId
         }),
       });

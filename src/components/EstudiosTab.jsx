@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, Eye, Trash2, Loader2 } from "lucide-react";
 import { uploadImage } from "../../libs/s3";
+import { useAuth } from "@/context/AuthContext";
 
-// Formating the file
+// Formateo de bytes a KB/MB
 const formatBytes = (bytes, decimals = 2) => {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -14,16 +15,50 @@ const formatBytes = (bytes, decimals = 2) => {
 };
 
 const EstudiosTab = ({ userId }) => {
+  const { user, loading: authLoading } = useAuth();
   const [paciente, setPaciente] = useState(null);
   const [uploads, setUploads] = useState([]); 
   const [tipoDeEstudio, setTipoDeEstudio] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [nombreProfesional, setNombreProfesional] = useState("");
 
-  // Simulación del nombre del profesional que ha iniciado sesión
-  const nombreProfesional = "Oscar Sencion";
+  useEffect(() => {
+    const obtenerNombre = async () => {
+      if (user?.name) {
+        setNombreProfesional(user.name);
+        return;
+      }
 
-  // OBTENER ESTUDIOS EXISTENTES
+      // Gestión para caso sin nombre
+      try {
+        const res = await fetch("/api/auth/status");
+        if (res.ok) {
+          const data = await res.json();
+          const realName = data.name || data.user?.name || data.fullName;
+          
+          if (realName) {
+            setNombreProfesional(realName);
+          } else if (data.email) {
+            const emailName = data.email.split('@')[0];
+            const formattedName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+            setNombreProfesional(formattedName);
+          } else {
+            setNombreProfesional("Profesional");
+          }
+        }
+      } catch (error) {
+        setNombreProfesional("Profesional");
+      }
+    };
+
+    if (!authLoading) {
+      obtenerNombre();
+    }
+  }, [user, authLoading]);
+
+
+  // --- OBTENER DATOS DEL PACIENTE Y SUS ESTUDIOS ---
   useEffect(() => {
     const fetchInitialData = async () => {
       if (!userId) {
@@ -32,26 +67,23 @@ const EstudiosTab = ({ userId }) => {
       }
       setLoading(true);
       try {
-        // Obtener datos del paciente
         const pacienteRes = await fetch(`/api/patients/${userId}`);
         const pacienteData = await pacienteRes.json();
         setPaciente(pacienteData);
 
-        // Obtener estudios existentes
         const estudiosRes = await fetch(`/api/patients/${userId}/estudios`);
         if (!estudiosRes.ok) throw new Error("Error al obtener estudios");
         const estudiosData = await estudiosRes.json();
 
-        // Mapear los estudios existentes al formato de la tabla
         const estudiosExistentes = estudiosData.map(estudio => ({
-          id: estudio._id, // Usamos el ID de la base de datos
+          id: estudio._id,
           file: { name: estudio.fileName, size: estudio.fileSize },
           paciente: `${pacienteData.name} ${pacienteData.apellidoPaterno}`,
           profesional: estudio.subidoPor,
           tipoDeEstudio: estudio.tipoDeEstudio,
           fecha: new Date(estudio.fechaDeCarga),
           status: 'Completado',
-          url: estudio.fileUrl, // Guardamos la URL para el botón de "Ver"
+          url: estudio.fileUrl,
         }));
         setUploads(estudiosExistentes);
       } catch (error) {
@@ -64,8 +96,7 @@ const EstudiosTab = ({ userId }) => {
     fetchInitialData();
   }, [userId]);
 
-
-  // --- 2. GUARDAR METADATOS EN LA BASE DE DATOS ---
+  // --- GUARDAR METADATOS EN BD ---
   const storeEstudioData = async (data) => {
     const response = await fetch(`/api/patients/uploadEstudio`, {
       method: "POST",
@@ -78,52 +109,45 @@ const EstudiosTab = ({ userId }) => {
     return await response.json();
   };
 
-  // --- 3. MANEJO DE LA SUBIDA DE ARCHIVOS ---
+  // --- MANEJO DE SUBIDA ---
   const handleUpload = async () => {
     const filesToUpload = uploads.filter(u => u.status === 'Pendiente');
     if (filesToUpload.length === 0) return;
+      const nombreFinal = nombreProfesional || "Profesional";
 
     setIsUploading(true);
 
     for (const upload of filesToUpload) {
-      // Actualizar UI a 'Subiendo'
       setUploads(prev => prev.map(u => u.id === upload.id ? { ...u, status: 'Subiendo' } : u));
 
       try {
-        // Subir archivo a S3
         const fileUrl = await uploadImage(upload.file);
 
-        // Guardar metadatos en la base de datos
         const newEstudioData = await storeEstudioData({
           userId: userId,
           fileName: upload.file.name,
           fileSize: upload.file.size,
           fileUrl: fileUrl,
           tipoDeEstudio: upload.tipoDeEstudio,
-          subidoPor: nombreProfesional,
+          subidoPor: nombreFinal, // Usamos la variable local asegurada
         });
 
-        // Actualizar UI a 'Completado' con los datos de la BD
-        setUploads(prev => prev.map(u => u.id === upload.id ? { ...u, status: 'Completado', id: newEstudioData._id, url: fileUrl } : u));
+        setUploads(prev => prev.map(u => u.id === upload.id ? { ...u, status: 'Completado', id: newEstudioData._id, url: fileUrl, profesional: nombreFinal } : u));
 
       } catch (error) {
-        console.error("Fallo la subida para el archivo:", upload.file.name, error);
+        console.error("Fallo la subida:", upload.file.name, error);
         setUploads(prev => prev.map(u => u.id === upload.id ? { ...u, status: 'Error', error: error.message } : u));
       }
     }
     setIsUploading(false);
   };
 
-  // --- 4. MANEJO DEL BORRADO DE ARCHIVOS ---
+  // --- MANEJO DE BORRADO ---
   const handleDeleteEstudio = async (estudioId, fileUrl) => {
-    // Confirmación antes de borrar
     if (!confirm("¿Estás seguro de que quieres eliminar este estudio? Esta acción no se puede deshacer.")) {
         return;
     }
     try {
-        // Aquí deberías tener una lógica para borrar de S3 si lo deseas
-        // await deleteImageFromS3(fileUrl);
-        
         const response = await fetch(`/api/patients/${userId}/estudios`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
@@ -140,13 +164,14 @@ const EstudiosTab = ({ userId }) => {
     }
   };
 
+  // --- MANEJO DE SELECCIÓN DE ARCHIVOS ---
   const handleFileChange = (e) => {
     if (e.target.files && tipoDeEstudio) {
       const newFiles = Array.from(e.target.files).map(file => ({
         id: `${file.name}-${Date.now()}`,
         file: file,
         paciente: paciente ? `${paciente.name} ${paciente.apellidoPaterno}` : "N/A",
-        profesional: nombreProfesional,
+        profesional: nombreProfesional || "Cargando...", 
         tipoDeEstudio: tipoDeEstudio,
         fecha: new Date(),
         status: 'Pendiente',
@@ -157,9 +182,12 @@ const EstudiosTab = ({ userId }) => {
     }
   };
 
-
   if (loading) {
-    return <div className="flex justify-center items-center p-10"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>;
+    return (
+      <div className="flex justify-center items-center p-10">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
   }
 
   return (
@@ -168,7 +196,9 @@ const EstudiosTab = ({ userId }) => {
         <FileText className="w-8 h-8 text-blue-600" />
         <h2 className="text-2xl font-bold text-gray-800">
           Gestor de Estudios para{" "}
-          <span className="text-blue-600">{paciente ? `${paciente.name} ${paciente.apellidoPaterno}` : "Paciente"}</span>
+          <span className="text-blue-600">
+            {paciente ? `${paciente.name} ${paciente.apellidoPaterno}` : "Paciente"}
+          </span>
         </h2>
       </div>
 
@@ -213,8 +243,6 @@ const EstudiosTab = ({ userId }) => {
           </div>
       </div>
 
-
-      {/* --- TABLA DE CARGA --- */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -236,7 +264,12 @@ const EstudiosTab = ({ userId }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{upload.tipoDeEstudio}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatBytes(upload.file.size)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{upload.fecha.toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{upload.profesional}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(upload.status === 'Pendiente' || upload.status === 'Subiendo') 
+                        ? (nombreProfesional || "Cargando...") 
+                        : upload.profesional
+                    }
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {upload.status === 'Pendiente' && <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">Pendiente</span>}
                     {upload.status === 'Subiendo' && <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 flex items-center"><Loader2 className="animate-spin w-4 h-4 mr-1"/>Subiendo</span>}

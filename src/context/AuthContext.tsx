@@ -1,85 +1,103 @@
-  "use client";
+"use client";
 
-  import {
-    createContext,
-    useContext,
-    useState,
-    useEffect,
-    ReactNode,
-  } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 
-  interface AuthContextType {
-    isAuthenticated: boolean;
-    role: string | null;
-    login: (role: string) => void;
-    logout: () => void;
-    loading: boolean;
-  }
+// Estructura del usuario
+interface UserData {
+  userId?: string;
+  name?: string;
+  email?: string;
+}
 
-  const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface AuthContextType {
+  isAuthenticated: boolean;
+  role: string | null;
+  user: UserData | null;
+  login: (role: string, userData?: UserData) => void;
+  logout: () => void;
+  loading: boolean;
+}
 
-  export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [role, setRole] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-    useEffect(() => {
-      // Al cargar la aplicación, verifica si la sesión está activa
-      const checkAuthStatus = async () => {
-        try {
-          const res = await fetch("/api/auth/status");
-          if (res.ok) {
-            const data = await res.json();
-            if (data.isAuthenticated) {
-              setIsAuthenticated(true);
-              setRole(data.role);
-            }
-          }
-        } catch (err) {
-          console.error("Error al verificar el estado de la autenticación:", err);
-        } finally {
-          setLoading(false);
-        }
-      };
-      checkAuthStatus();
-    }, []);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    const login = (newRole: string) => {
-      // Ya no recibir el token el servidor, ya lo maneja
-      setIsAuthenticated(true);
-      setRole(newRole);
-    };
-
-    const logout = async () => {
+  useEffect(() => {
+    const checkAuthStatus = async () => {
       try {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-        });
+        const res = await fetch("/api/auth/status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.isAuthenticated) {
+            setIsAuthenticated(true);
+            setRole(data.role);
+            
+            setUser({
+                userId: data.id || data.userId || data._id,
+                name: data.name || data.fullName || data.user?.name,
+                email: data.email
+            });
+          }
+        }
       } catch (err) {
-        console.error("Error al cerrar sesión:", err);
+        console.error("Error al verificar el estado de la autenticación:", err);
       } finally {
-        setIsAuthenticated(false);
-        setRole(null);
+        setLoading(false);
       }
     };
+    checkAuthStatus();
+  }, []);
 
-    if (loading) {
-      return <div>Cargando...</div>;
+  const login = (newRole: string, newUserData?: UserData) => {
+    setIsAuthenticated(true);
+    setRole(newRole);
+    
+    if (newUserData) {
+        setUser(newUserData);
     }
-
-    return (
-      <AuthContext.Provider
-        value={{ isAuthenticated, role, login, logout, loading }}
-      >
-        {children}
-      </AuthContext.Provider>
-    );
   };
 
-  export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-      throw new Error("useAuth debe ser usado dentro de un AuthProvider");
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    } finally {
+      setIsAuthenticated(false);
+      setRole(null);
+      setUser(null); 
     }
-    return context;
   };
+
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{ isAuthenticated, role, user, login, logout, loading }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth debe ser usado dentro de un AuthProvider");
+  }
+  return context;
+};

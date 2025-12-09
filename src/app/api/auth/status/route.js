@@ -17,6 +17,7 @@ export async function GET() {
       userId: decoded.userId,
       role: decoded.role,
       email: decoded.email,
+      name: decoded.name || decoded.username || null, 
     });
   } catch (error) {
     return NextResponse.json({ isAuthenticated: false }, { status: 200 });
