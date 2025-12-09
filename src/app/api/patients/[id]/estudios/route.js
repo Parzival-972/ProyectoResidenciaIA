@@ -20,6 +20,42 @@ export async function GET(request, { params }) {
   }
 }
 
+// UPLOAD
+export async function POST(request) {
+  try {
+    await connection();
+    const body = await request.json();
+
+    const { userId, fileName, fileSize, fileUrl, tipoDeEstudio, subidoPor } = body;
+
+    if (!userId || !fileName || !fileUrl || !tipoDeEstudio) {
+      return NextResponse.json(
+        { error: "Faltan campos requeridos" },
+        { status: 400 }
+      );
+    }
+
+    const newEstudio = new MedicalImage({
+      userId,
+      fileName,
+      fileSize,
+      fileUrl,
+      tipoDeEstudio,
+      subidoPor,
+    });
+
+    await newEstudio.save();
+
+    return NextResponse.json(newEstudio, { status: 201 });
+  } catch (error) {
+    console.error("Error al guardar el estudio:", error);
+    return NextResponse.json(
+      { error: "Error interno del servidor al guardar el estudio" },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE - Eliminar un estudio
 export async function DELETE(request) {
   try {
@@ -41,6 +77,44 @@ export async function DELETE(request) {
     console.error("Error al eliminar el estudio:", error);
     return NextResponse.json(
       { error: "Error al eliminar el estudio" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH: Actualizar datos de un estudio existente
+export async function PATCH(request) {
+  try {
+    await connection();
+    const body = await request.json();
+    const { id, ...updateData } = body; 
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Se requiere el ID del estudio para actualizar" },
+        { status: 400 }
+      );
+    }
+
+    const updatedEstudio = await MedicalImage.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true } 
+    );
+
+    if (!updatedEstudio) {
+      return NextResponse.json(
+        { error: "Estudio no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(updatedEstudio, { status: 200 });
+
+  } catch (error) {
+    console.error("Error al actualizar el estudio:", error);
+    return NextResponse.json(
+      { error: "Error al actualizar el estudio" },
       { status: 500 }
     );
   }

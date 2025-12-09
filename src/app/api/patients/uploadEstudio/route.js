@@ -1,3 +1,6 @@
+// CÓDIGO ANTIGUO SIN USO. 
+// ANTES SE UTILIZABA PARA LA VENTANA EstudiosTab.jsx 
+// SU FUNCIONAMIENTO SE MIGRÓ A patients/[id]/estudios/route.js 
 import { NextResponse } from "next/server";
 import connection from "../../../../../libs/connection";
 import MedicalImage from "../../../../models/medicalImage";

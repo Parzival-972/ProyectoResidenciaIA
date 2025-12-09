@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, Eye, Trash2, Loader2 } from "lucide-react";
+// Agregamos Check y X para confirmar/cancelar la edición
+import { Upload, FileText, CheckCircle2, AlertCircle, Eye, Trash2, Loader2, Pencil, Check, X } from "lucide-react";
 import { uploadImage } from "../../libs/s3";
 import { useAuth } from "@/context/AuthContext";
 
@@ -22,6 +23,10 @@ const EstudiosTab = ({ userId }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [nombreProfesional, setNombreProfesional] = useState("");
+
+  // ESTADOS PARA LA EDICIÓN DE NOMBRES (Archivos ya subidos)
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     const obtenerNombre = async () => {
@@ -84,6 +89,8 @@ const EstudiosTab = ({ userId }) => {
           fecha: new Date(estudio.fechaDeCarga),
           status: 'Completado',
           url: estudio.fileUrl,
+          // Para los existentes, el customName es el nombre con el que se guardó
+          customName: estudio.fileName 
         }));
         setUploads(estudiosExistentes);
       } catch (error) {
@@ -98,7 +105,7 @@ const EstudiosTab = ({ userId }) => {
 
   // --- GUARDAR METADATOS EN BD ---
   const storeEstudioData = async (data) => {
-    const response = await fetch(`/api/patients/uploadEstudio`, {
+    const response = await fetch(`/api/patients/${userId}/estudios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -123,13 +130,16 @@ const EstudiosTab = ({ userId }) => {
       try {
         const fileUrl = await uploadImage(upload.file);
 
+        // Usamos el customName (o el original si estuviera vacío)
+        const nombreParaGuardar = upload.customName?.trim() || upload.file.name;
+
         const newEstudioData = await storeEstudioData({
           userId: userId,
-          fileName: upload.file.name,
+          fileName: nombreParaGuardar, // <--- Aquí enviamos el nombre editado
           fileSize: upload.file.size,
           fileUrl: fileUrl,
           tipoDeEstudio: upload.tipoDeEstudio,
-          subidoPor: nombreFinal, // Usamos la variable local asegurada
+          subidoPor: nombreFinal, 
         });
 
         setUploads(prev => prev.map(u => u.id === upload.id ? { ...u, status: 'Completado', id: newEstudioData._id, url: fileUrl, profesional: nombreFinal } : u));
@@ -164,7 +174,7 @@ const EstudiosTab = ({ userId }) => {
     }
   };
 
-  // --- MANEJO DE SELECCIÓN DE ARCHIVOS ---
+  // --- MANEJO DE SELECCIÓN DE ARCHIVOS (Nuevos) ---
   const handleFileChange = (e) => {
     if (e.target.files && tipoDeEstudio) {
       const newFiles = Array.from(e.target.files).map(file => ({
@@ -175,12 +185,68 @@ const EstudiosTab = ({ userId }) => {
         tipoDeEstudio: tipoDeEstudio,
         fecha: new Date(),
         status: 'Pendiente',
+        customName: file.name // Inicializamos con el nombre original del archivo
       }));
       setUploads(prev => [...prev, ...newFiles]);
     } else {
         alert("Por favor, selecciona primero un tipo de estudio.");
     }
   };
+
+  // --- EDICIÓN NOMBRE (PENDIENTE) ---
+  const handleNameChangePending = (id, newName) => {
+    setUploads(prev => prev.map(u => 
+        u.id === id ? { ...u, customName: newName } : u
+    ));
+  };
+
+  // --- EDICIÓN NOMBRE (COMPLETADO) ---
+  const startEditing = (upload) => {
+    setEditingId(upload.id);
+    setEditName(upload.customName || upload.file.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditName("");
+  };
+
+  const saveEditing = async (upload) => {
+    if (!editName.trim()) return; 
+
+    if (editName === (upload.customName || upload.file.name)) {
+        cancelEditing();
+        return;
+    }
+
+    try {
+        // CORRECCIÓN AQUÍ:
+        // 1. Usamos 'id' en lugar de 'estudioId' para coincidir con el backend.
+        // 2. Usamos 'fileName' en lugar de 'newName' para coincidir con tu modelo de Mongoose.
+        const payload = { 
+            id: upload.id, 
+            fileName: editName 
+        };
+
+        const response = await fetch(`/api/patients/${userId}/estudios`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) throw new Error("Error al renombrar");
+
+        // Actualizamos el estado local
+        setUploads(prev => prev.map(u => 
+            u.id === upload.id ? { ...u, customName: editName, file: { ...u.file, name: editName } } : u
+        ));
+        
+        setEditingId(null);
+    } catch (error) {
+        console.error("Error al renombrar:", error);
+        alert("No se pudo cambiar el nombre. Inténtalo de nuevo.");
+    }
+};
 
   if (loading) {
     return (
@@ -247,7 +313,7 @@ const EstudiosTab = ({ userId }) => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Archivo</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Archivo (Editable)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo de Estudio</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tamaño</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Carga</th>
@@ -260,7 +326,49 @@ const EstudiosTab = ({ userId }) => {
             {uploads.length > 0 ? (
               uploads.map((upload) => (
                 <tr key={upload.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{upload.file.name}</td>
+                  {/* CELDA DE NOMBRE EDITABLE */}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 min-w-[250px]">
+                    {upload.status === 'Pendiente' ? (
+                        /* EDICIÓN PARA ARCHIVOS PENDIENTES (LOCAL) */
+                        <div className="flex items-center group">
+                            <input 
+                                type="text" 
+                                value={upload.customName} 
+                                onChange={(e) => handleNameChangePending(upload.id, e.target.value)}
+                                className="w-full border-b border-gray-300 focus:border-blue-500 focus:outline-none px-1 py-1 bg-transparent hover:bg-gray-50 transition"
+                                placeholder="Nombre del archivo"
+                            />
+                            <Pencil className="w-3 h-3 text-gray-400 ml-2 opacity-0 group-hover:opacity-100 transition" />
+                        </div>
+                    ) : (
+                        /* LÓGICA PARA ARCHIVOS YA SUBIDOS (SERVIDOR) */
+                        editingId === upload.id ? (
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="text" 
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    className="w-full border-b-2 border-blue-500 focus:outline-none px-1 py-1"
+                                    autoFocus
+                                />
+                                <button onClick={() => saveEditing(upload)} className="text-green-600 hover:bg-green-50 p-1 rounded-full" title="Guardar"><Check size={16}/></button>
+                                <button onClick={cancelEditing} className="text-red-600 hover:bg-red-50 p-1 rounded-full" title="Cancelar"><X size={16}/></button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-between group">
+                                <span title={upload.file.name}>{upload.customName || upload.file.name}</span>
+                                <button 
+                                    onClick={() => startEditing(upload)} 
+                                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 transition p-1 ml-2"
+                                    title="Renombrar"
+                                >
+                                    <Pencil size={14} />
+                                </button>
+                            </div>
+                        )
+                    )}
+                  </td>
+                  
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{upload.tipoDeEstudio}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatBytes(upload.file.size)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{upload.fecha.toLocaleDateString()}</td>
