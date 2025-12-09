@@ -71,3 +71,33 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+export async function PATCH(request) {
+  try {
+    await connection(); // Conectar a BD
+    
+    const body = await request.json();
+    const { id, esCorrecto } = body; // Recibimos el ID del diagnóstico y el nuevo estado
+
+    if (!id) {
+      return NextResponse.json({ error: "Falta el ID del diagnóstico" }, { status: 400 });
+    }
+
+    // Actualizamos solo el campo 'esCorrecto'
+    const diagnosticoActualizado = await ClinicalDiagnosis.findByIdAndUpdate(
+      id,
+      { esCorrecto: esCorrecto },
+      { new: true } // Para devolver el documento actualizado
+    );
+
+    if (!diagnosticoActualizado) {
+      return NextResponse.json({ error: "Diagnóstico no encontrado" }, { status: 404 });
+    }
+
+    return NextResponse.json(diagnosticoActualizado);
+  } catch (error) {
+    console.error("Error actualizando validación:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

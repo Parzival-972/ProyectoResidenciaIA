@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { Brain, Loader2, Search, Activity } from "lucide-react";
 import Swal from 'sweetalert2'; 
+import { useAuth } from "@/context/AuthContext";
 
 const EvaluacionTab = ({ userId }) => {
+  const { user, loading: authLoading } = useAuth();
   const [enfermedad, setEnfermedad] = useState("");
   const [modelo, setModelo] = useState("");
   const [estudiosCargados, setEstudiosCargados] = useState([]);
@@ -14,7 +16,7 @@ const EvaluacionTab = ({ userId }) => {
   const [error, setError] = useState(null);
   
   // Estado para la info del doctor
-  const [doctorInfo, setDoctorInfo] = useState({ name: "", id: "" });
+  const [nombreProfesional, setNombreProfesional] = useState("");
 
   const modelosDisponibles = {
     Alzheimer: [
@@ -28,23 +30,36 @@ const EvaluacionTab = ({ userId }) => {
 
   // 0. OBTENER USUARIO ACTUAL
   useEffect(() => {
-    const checkSession = async () => {
+    const obtenerNombre = async () => {
+      // A. Si el contexto ya tiene el nombre, úsalo directo (Rápido)
+      if (user?.name) {
+        setNombreProfesional(user.name);
+        return;
+      }
+
+      // B. Si no, búscalo en el servidor (Respaldo)
       try {
-        const res = await fetch("/api/auth/check"); 
-        const data = await res.json();
-        
-        if (data.isAuthenticated) {
-          setDoctorInfo({
-            name: data.name || data.email, 
-            id: data.userId
-          });
+        const res = await fetch("/api/auth/status"); // O /api/auth/status, la que uses
+        if (res.ok) {
+            const data = await res.json();
+            // Lógica para intentar sacar el nombre de donde sea posible
+            const realName = data.name || data.user?.name || data.fullName;
+            if (realName) {
+                setNombreProfesional(realName);
+            } else if (data.email) {
+                setNombreProfesional(data.email.split('@')[0]);
+            }
         }
-      } catch (err) {
-        console.error("Error verificando sesión", err);
+      } catch (error) {
+        console.error("Error obteniendo sesión", error);
+        setNombreProfesional("Profesional del Sistema");
       }
     };
-    checkSession();
-  }, []);
+
+    if (!authLoading) {
+      obtenerNombre();
+    }
+  }, [user, authLoading]);
 
   // 1. CARGAR ESTUDIOS
   useEffect(() => {
@@ -104,7 +119,9 @@ const EvaluacionTab = ({ userId }) => {
 
     try {
       const estudioObj = estudiosCargados.find(e => e._id === estudioSeleccionado);
-      if (!estudioObj) throw new Error("Estudio no encontrado en la lista");
+      
+      // Aseguramos que haya un nombre antes de enviar
+      const nombreFinal = nombreProfesional || "Profesional"; 
 
       const response = await fetch("/api/diagnostico", {
         method: "POST",
@@ -113,14 +130,12 @@ const EvaluacionTab = ({ userId }) => {
           fileUrl: estudioObj.fileUrl, 
           modeloId: modelo,           
           pacienteId: userId,
-
-          // --- AGREGADO: DATOS PARA GUARDAR EN BASE DE DATOS ---
-          estudioId: estudioSeleccionado,                // <--- IMPORTANTE: ID del estudio
-          nombreProfesional: doctorInfo.name || "Desconocido" // <--- IMPORTANTE: Nombre del doctor
-          // ----------------------------------------------------
+          estudioId: estudioSeleccionado,
+          
+          // AQUÍ ENVIAMOS EL NOMBRE CORRECTO
+          nombreProfesional: nombreFinal 
         }),
       });
-
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || "Error al realizar el diagnóstico");

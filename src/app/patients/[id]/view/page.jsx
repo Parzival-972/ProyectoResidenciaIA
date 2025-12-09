@@ -9,7 +9,7 @@ import MedicoTab from "@/components/MedicoTab";
 import TabButton from "@/components/TabButton";
 import TabContent from "@/components/TabContent";
 import EstudiosTab from "@/components/EstudiosTab";
-
+import HistorialTab from "@/components/HistorialTab";
 
 const ViewPatientPage = ({ params }) => {
   const { id } = params;
@@ -24,6 +24,7 @@ const ViewPatientPage = ({ params }) => {
     { id: "estudios", label: "Subir Estudios" },
     { id: "demencia-medico", label: "Diagnóstico de Demencia" },
     { id: "evaluacion", label: "Evaluación Estudio Médico" },
+    { id: "historial", label: "Historial de Evaluaciones" },
   ];
 
   const calculateIMC = (peso, estatura) => {
@@ -152,6 +153,7 @@ const ViewPatientPage = ({ params }) => {
          {activeTab === "estudios" && <EstudiosTab userId={id} />}
          {activeTab === "demencia-medico" && <MedicoTab userId={id} />}
          {activeTab === "evaluacion" && <EvaluacionTab userId={id} />}
+         {activeTab === "historial" && <HistorialTab userId={id} />}
          </TabContent>
       </AnimatePresence>
     </motion.div>
