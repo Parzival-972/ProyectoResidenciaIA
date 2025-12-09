@@ -92,4 +92,16 @@
   .info-toast {
     @apply bg-blue-50 border-blue-100 dark:bg-blue-950 dark:border-blue-900 text-blue-800 dark:text-blue-200;
   }
+  
+  /* 💡 NUEVO ESTILO PARA BOTÓN DE SWEETALERT2 */
+  .mi-boton-personalizado {
+    /* Clases de SweetAlert2 para botones */
+    @apply !m-1 !p-3 !font-semibold !rounded-md;
+
+    /* Estilos Primarios (Azul, similar al botón de 'Evaluar Estudio') */
+    @apply !bg-blue-600 !text-white !border-none;
+    
+    /* Hover y Foco */
+    @apply hover:!bg-blue-700 focus:!ring-4 focus:!ring-blue-300 transition-colors; 
+  }
 }

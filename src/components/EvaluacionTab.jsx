@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Brain, Loader2, Search, Activity } from "lucide-react";
+import Swal from 'sweetalert2'; 
 
 const EvaluacionTab = ({ userId }) => {
   const [enfermedad, setEnfermedad] = useState("");
@@ -50,11 +51,46 @@ const EvaluacionTab = ({ userId }) => {
     fetchEstudios();
   }, [userId]);
 
+  // Función para mostrar el resultado del diagnóstico usando Swal
+  const mostrarResultadoDiagnostico = (resultado) => {
+    Swal.fire({
+      title: 'Diagnóstico Completado',
+      icon: 'success', // Usamos un icono de éxito
+      
+      // Usamos 'html' para dar formato al contenido
+      html: 
+        `<div style="text-align: left; padding: 0 10px;">
+           <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
+             Resultado: <span style="color: #22c55e;">${resultado.diagnostico}</span>
+           </p>
+           <p style="font-size: 1.1em; color: #555;">
+             Nivel de Certeza: <strong>${resultado.nivel_de_certeza}%</strong>
+           </p>
+         </div>`,
+      
+      confirmButtonText: 'Aceptar y Cerrar',
+    
+      customClass: {
+        confirmButton: 'mi-boton-personalizado'
+      }
+    });
+  };
+
   // --- 2. ENVIAR A EVALUAR ---
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 💡 MODIFICACIÓN 1: Reemplazar alert() por Swal.fire (Advertencia de datos faltantes)
     if (!enfermedad || !modelo || !estudioSeleccionado) {
-      alert("Por favor, completa todos los pasos.");
+      Swal.fire({
+        title: '¡Atención!',
+        text: "Por favor, completa los 3 pasos: selecciona la enfermedad, el modelo y el estudio.",
+        icon: 'warning', 
+        confirmButtonText: 'Entendido',
+        customClass: {
+          confirmButton: 'mi-boton-personalizado'
+        }
+      });
       return;
     }
 
@@ -72,7 +108,7 @@ const EvaluacionTab = ({ userId }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileUrl: estudioObj.fileUrl, // URL de S3
-          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
+          modeloId: modelo,            // ID técnico (ej: 'alzheimer_grayscale')
           pacienteId: userId
         }),
       });
@@ -84,16 +120,23 @@ const EvaluacionTab = ({ userId }) => {
 
       const resultado = await response.json();
 
-      // 3. Mostrar resultado
-      alert(
-        `Diagnóstico Completado:\n\n` +
-        `Resultado: ${resultado.diagnostico}\n` +
-        `Certeza: ${resultado.nivel_de_certeza}%`
-      );
+      // 3. Mostrar resultado usando la función Swal
+      mostrarResultadoDiagnostico(resultado);
 
     } catch (err) {
       console.error(err);
-      alert(`Error: ${err.message}`);
+      
+      // 💡 MODIFICACIÓN 2: Reemplazar alert() por Swal.fire (Error de Diagnóstico)
+      Swal.fire({
+        title: 'Error en la Evaluación',
+        text: `Ocurrió un error: ${err.message}`,
+        icon: 'error',
+        confirmButtonText: 'Cerrar',
+        customClass: {
+          confirmButton: 'mi-boton-personalizado'
+        }
+      });
+
       setError(err.message);
     } finally {
       setLoading(false);
