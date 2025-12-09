@@ -1,28 +1,34 @@
 import { NextResponse } from "next/server";
 
-// URL de tu NeuroAPI (En local es localhost:8000, en AWS será la URL de Lambda/EC2)
+// 1. USA TUS PROPIOS ARCHIVOS (Ajusta los ../ según la profundidad de tu carpeta)
+// Si estás en src/app/api/diagnostico/route.js, usualmente necesitas bajar 3 niveles:
+import ClinicalDiagnosis from "../../../models/clinicalDiagnosis";
+import connection from "../../../../libs/connection";
+
 const NEURO_API_URL = process.env.NEURO_API_URL || "http://127.0.0.1:8000";
 
 export async function POST(request) {
   try {
+    // 2. CONECTAR A LA BD (Usando tu función 'connection')
+    await connection(); 
+
     const body = await request.json();
-    const { fileUrl, modeloId, pacienteId } = body;
+    
+    const { fileUrl, modeloId, pacienteId, estudioId, nombreProfesional } = body;
 
     if (!fileUrl || !modeloId) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
     }
 
-    // 1. Descargar la imagen desde S3 (o donde esté alojada)
+    // --- Lógica de descarga y envío a la IA ---
     const imageResponse = await fetch(fileUrl);
     if (!imageResponse.ok) throw new Error("No se pudo descargar la imagen original");
     const imageBlob = await imageResponse.blob();
 
-    // 2. Preparar el formulario para enviar a NeuroAPI
     const formData = new FormData();
     formData.append("paciente", pacienteId);
     formData.append("file", imageBlob, "imagen_diagnostico.jpg"); 
 
-    // 3. Llamar a NeuroAPI (Tu API de Python)
     console.log(`📡 Enviando a NeuroAPI: ${NEURO_API_URL}/diagnosticar/${modeloId}`);
     
     const aiResponse = await fetch(`${NEURO_API_URL}/diagnosticar/${modeloId}`, {
@@ -38,7 +44,26 @@ export async function POST(request) {
     const resultadoIA = await aiResponse.json();    
     const datosParaFrontend = resultadoIA.resultado ? resultadoIA.resultado : resultadoIA;
 
-    // 5. Devolver resultado al Frontend
+    // --- 3. GUARDADO AUTOMÁTICO (Usando tu modelo ClinicalDiagnosis) ---
+    try {
+      // No necesitamos llamar connectDB() aquí porque ya llamamos await connection() al inicio
+      
+      await ClinicalDiagnosis.create({
+        userId: pacienteId,
+        profesional: nombreProfesional || "Sistema", 
+        medicalImage: estudioId, 
+        diagnosticoIA: datosParaFrontend.diagnostico,
+        nivelCerteza: datosParaFrontend.nivel_de_certeza,
+        modeloUsado: modeloId,
+        esCorrecto: null
+      });
+
+      console.log("✅ Diagnóstico guardado en historial.");
+
+    } catch (dbError) {
+      console.error("⚠️ Error guardando en DB (No afecta al usuario):", dbError.message);
+    }
+
     return NextResponse.json(datosParaFrontend);
 
   } catch (error) {

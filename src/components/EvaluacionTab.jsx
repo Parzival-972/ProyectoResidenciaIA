@@ -12,8 +12,10 @@ const EvaluacionTab = ({ userId }) => {
   const [loading, setLoading] = useState(false);
   const [loadingEstudios, setLoadingEstudios] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Estado para la info del doctor
+  const [doctorInfo, setDoctorInfo] = useState({ name: "", id: "" });
 
-  // --- CONFIGURACIÓN DE MODELOS ---
   const modelosDisponibles = {
     Alzheimer: [
       { nombre: "Tomografía Blanco y Negro", id: "alzheimer_grayscale", tipoArchivo: ".jpg" },
@@ -24,7 +26,27 @@ const EvaluacionTab = ({ userId }) => {
     ],
   };
 
-  // --- 1. CARGAR ESTUDIOS ---
+  // 0. OBTENER USUARIO ACTUAL
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/auth/check"); 
+        const data = await res.json();
+        
+        if (data.isAuthenticated) {
+          setDoctorInfo({
+            name: data.name || data.email, 
+            id: data.userId
+          });
+        }
+      } catch (err) {
+        console.error("Error verificando sesión", err);
+      }
+    };
+    checkSession();
+  }, []);
+
+  // 1. CARGAR ESTUDIOS
   useEffect(() => {
     const fetchEstudios = async () => {
       if (!userId) return;
@@ -32,29 +54,22 @@ const EvaluacionTab = ({ userId }) => {
         setLoadingEstudios(true);
         setError(null);
         const response = await fetch(`/api/patients/${userId}/estudios`);
-        if (!response.ok) {
-          throw new Error("Error al obtener los estudios médicos");
-        }
+        if (!response.ok) throw new Error("Error al obtener los estudios médicos");
         const data = await response.json();
         setEstudiosCargados(data);
       } catch (err) {
         setError(err.message);
-        console.error(err);
       } finally {
         setLoadingEstudios(false);
       }
     };
-
     fetchEstudios();
   }, [userId]);
 
-  // Función para mostrar el resultado del diagnóstico usando Swal
   const mostrarResultadoDiagnostico = (resultado) => {
     Swal.fire({
       title: 'Diagnóstico Completado',
-      icon: 'success', // Usamos un icono de éxito
-      
-      // Usamos 'html' para dar formato al contenido
+      icon: 'success', 
       html: 
         `<div style="text-align: left; padding: 0 10px;">
            <p style="font-size: 1.2em; font-weight: bold; margin-bottom: 5px;">
@@ -64,16 +79,12 @@ const EvaluacionTab = ({ userId }) => {
              Nivel de Certeza: <strong>${resultado.nivel_de_certeza}%</strong>
            </p>
          </div>`,
-      
       confirmButtonText: 'Aceptar y Cerrar',
-    
-      customClass: {
-        confirmButton: 'mi-boton-personalizado'
-      }
+      customClass: { confirmButton: 'mi-boton-personalizado' }
     });
   };
 
-  // --- 2. ENVIAR A EVALUAR ---
+  // --- 2. ENVIAR A EVALUAR (AQUÍ ESTÁ LA CORRECCIÓN) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -83,9 +94,7 @@ const EvaluacionTab = ({ userId }) => {
         text: "Por favor, completa los 3 pasos: selecciona la enfermedad, el modelo y el estudio.",
         icon: 'warning', 
         confirmButtonText: 'Entendido',
-        customClass: {
-          confirmButton: 'mi-boton-personalizado'
-        }
+        customClass: { confirmButton: 'mi-boton-personalizado' }
       });
       return;
     }
@@ -94,18 +103,21 @@ const EvaluacionTab = ({ userId }) => {
     setError(null);
 
     try {
-      // 1. Buscar el objeto del estudio completo para obtener la URL
       const estudioObj = estudiosCargados.find(e => e._id === estudioSeleccionado);
       if (!estudioObj) throw new Error("Estudio no encontrado en la lista");
 
-      // 2. Llamar a nuestro "puente" de API
       const response = await fetch("/api/diagnostico", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fileUrl: estudioObj.fileUrl, 
-          modeloId: modelo,          
-          pacienteId: userId
+          modeloId: modelo,           
+          pacienteId: userId,
+
+          // --- AGREGADO: DATOS PARA GUARDAR EN BASE DE DATOS ---
+          estudioId: estudioSeleccionado,                // <--- IMPORTANTE: ID del estudio
+          nombreProfesional: doctorInfo.name || "Desconocido" // <--- IMPORTANTE: Nombre del doctor
+          // ----------------------------------------------------
         }),
       });
 
@@ -119,24 +131,19 @@ const EvaluacionTab = ({ userId }) => {
 
     } catch (err) {
       console.error(err);
-      
       Swal.fire({
         title: 'Error en la Evaluación',
         text: `Ocurrió un error: ${err.message}`,
         icon: 'error',
         confirmButtonText: 'Cerrar',
-        customClass: {
-          confirmButton: 'mi-boton-personalizado'
-        }
+        customClass: { confirmButton: 'mi-boton-personalizado' }
       });
-
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtrar estudios basados en el término de búsqueda
   const estudiosFiltrados = estudiosCargados.filter(
     (estudio) =>
       estudio.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -173,7 +180,7 @@ const EvaluacionTab = ({ userId }) => {
           </select>
         </div>
 
-        {/* 2. Selector de Modelo (condicional) */}
+        {/* 2. Selector de Modelo */}
         {enfermedad && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -197,7 +204,7 @@ const EvaluacionTab = ({ userId }) => {
           </div>
         )}
 
-        {/* 3. Selector de Estudio (condicional) */}
+        {/* 3. Selector de Estudio */}
         {modelo && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -212,7 +219,6 @@ const EvaluacionTab = ({ userId }) => {
               <p className="text-red-500 text-sm">{error}</p>
             ) : (
               <>
-                {/* Barra de búsqueda */}
                 <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
@@ -224,7 +230,6 @@ const EvaluacionTab = ({ userId }) => {
                   />
                 </div>
                 
-                {/* Dropdown de estudios */}
                 <select
                   value={estudioSeleccionado}
                   onChange={(e) => setEstudioSeleccionado(e.target.value)}
