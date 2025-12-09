@@ -21,7 +21,7 @@ const EvaluacionTab = ({ userId }) => {
       { nombre: "Tomografía a Color", id: "alzheimer_color", tipoArchivo: ".jpg" },
     ],
     Parkinson: [
-      { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral", tipoArchivo: ".jpg" },
+      { nombre: "Test Espiral o de Ondas", id: "parkinson_spiral_wave", tipoArchivo: ".jpg" },
       { nombre: "Modelo D (Audio-Voz)", id: "nombredelmodelo", tipoArchivo: ".mp3" },
     ],
   };
