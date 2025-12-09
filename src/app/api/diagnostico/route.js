@@ -35,15 +35,7 @@ export async function POST(request) {
       throw new Error(`Error en NeuroAPI: ${errorText}`);
     }
 
-    const resultadoIA = await aiResponse.json();
-    
-    // --- DEBUGGING CRÍTICO ---
-    console.log("🤖 Respuesta recibida de NeuroAPI:", resultadoIA);
-    // -------------------------
-
-    // ADAPTACIÓN: La API de Python devuelve los datos anidados dentro de "resultado".
-    // El frontend espera { diagnostico: "...", nivel_de_certeza: ... } directamente.
-    // Extraemos la propiedad 'resultado' si existe, para devolver una estructura plana.
+    const resultadoIA = await aiResponse.json();    
     const datosParaFrontend = resultadoIA.resultado ? resultadoIA.resultado : resultadoIA;
 
     // 5. Devolver resultado al Frontend

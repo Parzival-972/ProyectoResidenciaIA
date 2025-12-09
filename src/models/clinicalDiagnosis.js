@@ -2,17 +2,16 @@ import mongoose from "mongoose";
 
 const ClinicalDiagnosisSchema = new mongoose.Schema(
   {   
-    patient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Patient", 
-      required: true,
-    },
+    userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Patient", // Referencia al modelo de Paciente
+    required: true,
+  },
 
-    medicalStaff: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "MedicalStaff", 
-      required: true,
-    },
+    profesional: {
+    type: String, // Nombre del profesional que subió el archivo
+    required: true,
+  },
 
     medicalImage: {
       type: mongoose.Schema.Types.ObjectId,
@@ -20,7 +19,6 @@ const ClinicalDiagnosisSchema = new mongoose.Schema(
       required: true,
     },
 
-    // --- DATOS QUE VIENEN DE LA NEURO-API ---
     diagnosticoIA: {
       type: String,
       required: true,
@@ -29,6 +27,8 @@ const ClinicalDiagnosisSchema = new mongoose.Schema(
     nivelCerteza: {
       type: Number,
       required: true,
+      min: 0,   
+      max: 100,
     },
 
     modeloUsado: {
@@ -36,7 +36,6 @@ const ClinicalDiagnosisSchema = new mongoose.Schema(
       required: true,
     }, 
 
-    // --- VALIDACIÓN DEL MÉDICO ---
     esCorrecto: {
       type: Boolean,
       default: null, 
